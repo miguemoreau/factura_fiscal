@@ -7,7 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
-        /* ESTILOS INTERFAZ MÓVIL */
+        /* 1. SECCIÓN DE ESTILOS CSS */
         :root {
             --bg-color: #f8fafc;
             --card-bg: #ffffff;
@@ -44,25 +44,15 @@
         .row { display: flex; gap: 12px; }
         .row .form-group { flex: 1; }
         
-        /* Estilos para las líneas dinámicas de conceptos */
         .linea-item {
             background: #f8fafc;
             padding: 12px;
             border-radius: 12px;
             border: 1px solid var(--border-color);
             margin-bottom: 12px;
-            position: relative;
         }
         .btn-eliminar {
-            background: var(--danger-color);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            float: right;
-            margin-bottom: 8px;
+            background: var(--danger-color); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; float: right; margin-bottom: 8px;
         }
         
         button.primary {
@@ -76,12 +66,14 @@
         
         #screen-setup, #screen-login, #app-content { display: none; }
 
-        /* VISTA PREVIA DEL PDF (Solución al error en blanco: se renderiza fuera de la pantalla en lugar de display:none) */
+        /* VISTA PREVIA DEL PDF REPARADA (La dejamos visible en el DOM pero oculta mediante opacidad y desubicación absoluta) */
         #pdf-wrapper {
             position: absolute;
             left: -9999px;
-            top: -9999px;
-            width: 210mm; /* Ancho A4 */
+            top: 0;
+            width: 210mm;
+            opacity: 1;
+            z-index: -1;
         }
         .pdf-page { font-family: Arial, sans-serif; color: #333; padding: 20mm; background: white; box-sizing: border-box; }
         .pdf-header { margin-bottom: 40px; display: flex; justify-content: space-between; }
@@ -101,10 +93,9 @@
 <body>
 
     <div class="container">
-
         <div id="screen-setup" class="card">
             <h2>Configuración de Seguridad</h2>
-            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">Crea una contraseña maestra. Se encriptará localmente en tu teléfono.</p>
+            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">Crea una contraseña maestra para tu teléfono o computadora.</p>
             <div class="form-group">
                 <label for="setup-password">Crea tu contraseña de acceso:</label>
                 <input type="password" id="setup-password" placeholder="Mínimo 6 caracteres">
@@ -147,7 +138,7 @@
                         <textarea id="emisor_direccion" rows="2" required></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="emisor_iban">Mi Cuenta Bancaria (IBAN) para el cobro</label>
+                        <label for="emisor_iban">Mi Cuenta Bancaria (IBAN)</label>
                         <input type="text" id="emisor_iban" required placeholder="ESXX XXXX XXXX XXXX XXXX XXXX">
                     </div>
                 </div>
@@ -184,8 +175,7 @@
 
                 <div class="card">
                     <h2>Servicios / Ítems Facturados</h2>
-                    <div id="contenedor-lineas">
-                        </div>
+                    <div id="contenedor-lineas"></div>
                     <button type="button" class="secondary" onclick="agregarNuevaLineaFormulario()">+ Añadir Servicio / Ítem</button>
                     
                     <div class="row" style="margin-top: 10px;">
@@ -251,8 +241,7 @@
                         <th class="text-right" style="width: 25%;">Total</th>
                     </tr>
                 </thead>
-                <tbody id="pdf-tabla-items">
-                    </tbody>
+                <tbody id="pdf-tabla-items"></tbody>
             </table>
 
             <div class="pdf-totales">
@@ -282,8 +271,6 @@
     </div>
 
     <script>
-        const CONFIG_SECURE = { tokenSecreto: "2024FACTURA" };
-
         async function calcularHashSHA256(texto) {
             const msgBuffer = new TextEncoder().encode(texto);                    
             const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -309,8 +296,8 @@
             if (pass.length < 6) { alert("Mínimo 6 caracteres."); return; }
             localStorage.setItem('secure_password_hash', await calcularHashSHA256(pass));
             sessionStorage.setItem('session_authenticated', 'true');
-            document.getElementById('screen-setup').style.display = 'none';
-            mostrarAplicacionFacturas();
+            document.getElementById('screen-setup').style.none = 'none';
+            window.location.reload(); // Recarga limpia para activar la app
         }
 
         async function loginConContrasena() {
@@ -328,7 +315,6 @@
             cargarDatosDesdeAlmacenamientoLocal();
         }
 
-        // CONTROL DE LÍNEAS DINÁMICAS EN EL FORMULARIO
         let contadorLineas = 0;
         function agregarNuevaLineaFormulario(concepto = '', precio = '') {
             contadorLineas++;
@@ -340,11 +326,11 @@
                 <button type="button" class="btn-eliminar" onclick="eliminarLineaFormulario(${contadorLineas})">Eliminar</button>
                 <div class="form-group">
                     <label>Concepto / Servicio</label>
-                    <input type="text" class="input-concepto" required value="${concepto}" placeholder="Ej: Desarrollo del módulo X">
+                    <input type="text" class="input-concepto" required value="${concepto}">
                 </div>
                 <div class="form-group">
                     <label>Importe (€)</label>
-                    <input type="number" class="input-precio" step="0.01" required value="${precio}" placeholder="0.00">
+                    <input type="number" class="input-precio" step="0.01" required value="${precio}">
                 </div>
             `;
             contenedor.appendChild(div);
@@ -355,7 +341,6 @@
             if (linea) linea.remove();
         }
 
-        // PERSISTENCIA LOCAL INTELIGENTE
         function cargarDatosDesdeAlmacenamientoLocal() {
             const camposFijos = ['emisor_nombre', 'emisor_nif', 'emisor_email', 'emisor_direccion', 'emisor_iban', 'cliente_nombre', 'cliente_nif', 'cliente_direccion', 'iva', 'irpf'];
             camposFijos.forEach(campo => {
@@ -363,22 +348,20 @@
                 if (valor) document.getElementById(campo).value = valor;
             });
             
-            // Cargar últimos ítems guardados (si los hay)
             const itemsGuardados = localStorage.getItem('data_ultimos_items');
             if (itemsGuardados) {
                 const items = JSON.parse(itemsGuardados);
                 items.forEach(item => agregarNuevaLineaFormulario(item.concepto, item.precio));
             } else {
-                agregarNuevaLineaFormulario(); // Si está vacío, añade una línea en blanco por defecto
+                agregarNuevaLineaFormulario();
             }
             document.getElementById('fecha').value = new Date().toISOString().substring(0, 10);
         }
 
-        // GENERACIÓN REPARADA DEL PDF
-        function generarFacturaPDF(event) {
+        // CAMBIO CRUCIAL: Añadimos 'async' a la función para poder congelar el tiempo
+        async function generarFacturaPDF(event) {
             event.preventDefault();
 
-            // 1. Captura de datos del Emisor y Cliente
             const emisor_nombre = document.getElementById('emisor_nombre').value;
             const emisor_nif = document.getElementById('emisor_nif').value;
             const emisor_email = document.getElementById('emisor_email').value;
@@ -393,14 +376,13 @@
             const p_iva = parseInt(document.getElementById('iva').value);
             const p_irpf = parseInt(document.getElementById('irpf').value);
 
-            // 2. Procesamiento de los ítems dinámicos y cálculo de la Base Imponible
             const bloquesLineas = document.querySelectorAll('.linea-item');
-            if (bloquesLineas.length === 0) { alert("Debes añadir al menos un servicio."); return; }
+            if (bloquesLineas.length === 0) { alert("Añade al menos un servicio."); return; }
 
             let base_imponible = 0;
             const listaItemsParaGuardar = [];
             const tablaPdfBody = document.getElementById('pdf-tabla-items');
-            tablaPdfBody.innerHTML = ''; // Limpiar tabla del PDF
+            tablaPdfBody.innerHTML = ''; 
 
             bloquesLineas.forEach(bloque => {
                 const concepto = bloque.querySelector('.input-concepto').value;
@@ -409,7 +391,6 @@
                 base_imponible += precio;
                 listaItemsParaGuardar.push({ concepto, precio });
 
-                // Inyectar fila en la tabla del PDF
                 const fila = document.createElement('tr');
                 fila.innerHTML = `
                     <td style="white-space: pre-line;">${concepto}</td>
@@ -418,26 +399,22 @@
                 tablaPdfBody.appendChild(fila);
             });
 
-            // 3. Guardar todo de forma persistente
             const camposAGuardar = { emisor_nombre, emisor_nif, emisor_email, emisor_direccion, emisor_iban, cliente_nombre, cliente_nif, cliente_direccion, iva: p_iva, irpf: p_irpf };
             Object.keys(camposAGuardar).forEach(key => localStorage.setItem('data_' + key, camposAGuardar[key]));
             localStorage.setItem('data_ultimos_items', JSON.stringify(listaItemsParaGuardar));
 
-            // 4. Cálculos Fiscales (España)
             const cuota_iva = base_imponible * (p_iva / 100);
             const cuota_irpf = base_imponible * (p_irpf / 100);
             const total_neto = base_imponible + cuota_iva - cuota_irpf;
 
-            // Formatear Fecha (DD/MM/AAAA)
             const [year, month, day] = fechaRaw.split('-');
             const fechaFormateada = `${day}/${month}/${year}`;
 
-            // 5. Inyección de textos en el PDF
             document.getElementById('pdf-emisor-nombre').innerText = emisor_nombre;
             document.getElementById('pdf-emisor-nif').innerText = emisor_nif;
             document.getElementById('pdf-emisor-dir').innerText = emisor_direccion;
             document.getElementById('pdf-emisor-email').innerText = emisor_email;
-            document.getElementById('pdf-emisor-iban').innerText = emisor_iban; // Inyectar IBAN
+            document.getElementById('pdf-emisor-iban').innerText = emisor_iban;
 
             document.getElementById('pdf-num').innerText = numero;
             document.getElementById('pdf-fecha').innerText = fechaFormateada;
@@ -458,10 +435,12 @@
             }
             document.getElementById('pdf-tot-final').innerText = total_neto.toFixed(2) + " €";
 
-            // 6. Lanzar conversión a PDF (Solución definitiva al blanco)
-            // Usamos el contenedor completo que ubica el PDF fuera de la pantalla en lugar de display:none
-            const elementoPDF = document.getElementById('pdf-template');
+            // PARCHE DE TIEMPO ASÍNCRONO: Forzamos una pausa de 250 milisegundos.
+            // Esto le da tiempo al procesador de la computadora a renderizar las nuevas celdas de la tabla.
+            await new Promise(resolve => setTimeout(resolve, 250));
 
+            // Ahora que los datos están 100% pintados, ejecutamos html2pdf con seguridad
+            const elementoPDF = document.getElementById('pdf-template');
             const opcionesConfig = {
                 margin:       0,
                 filename:     `Factura_${numero}.pdf`,
@@ -470,7 +449,6 @@
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // Ejecutar la descarga
             html2pdf().set(opcionesConfig).from(elementoPDF).save();
         }
     </script>

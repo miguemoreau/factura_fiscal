@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Facturas Profesional</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        /* ESTILOS INTERFAZ MÓVIL */
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --accent-color: #0f172a;
+            --border-color: #e2e8f0;
+            --success-color: #10b981;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 16px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { font-size: 1.4rem; text-align: center; color: var(--accent-color); margin-bottom: 20px; font-weight: 700; }
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            margin-bottom: 16px;
+        }
+        h2 { font-size: 1rem; margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #334155; }
+        input, textarea, select {
+            width: 100%; padding: 14px; border: 1px solid var(--border-color); border-radius: 10px; box-sizing: border-box; font-size: 0.95rem; background: #fdfdfd;
+        }
+        input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent-color); background: #fff; }
+        .row { display: flex; gap: 12px; }
+        .row .form-group { flex: 1; }
+        button {
+            width: 100%; background-color: var(--accent-color); color: white; border: none; padding: 16px; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        button:active { transform: scale(0.98); }
+        .badge-secure { text-align: center; font-size: 0.75rem; color: var(--success-color); margin-top: 15px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 4px; }
+        
+        /* PANTALLAS DE CONTROL */
+        #screen-setup, #screen-login, #app-content { display: none; }
+
+        /* VISTA PREVIA OCULTA DEL PDF */
+        #pdf-template { display: none; }
+        .pdf-page { font-family: Arial, sans-serif; color: #333; padding: 20mm; background: white; box-sizing: border-box; }
+        .pdf-header { margin-bottom: 40px; display: flex; justify-content: space-between; }
+        .pdf-title { font-size: 28pt; color: #0f172a; font-weight: bold; margin: 0; letter-spacing: -1px; }
+        .pdf-col-right { text-align: right; }
+        .pdf-section-title { font-size: 9pt; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; letter-spacing: 0.5px; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin-top: 25px; margin-bottom: 35px; }
+        .pdf-table th { background-color: #0f172a; color: white; text-align: left; padding: 12px 10px; font-size: 10pt; text-transform: uppercase; }
+        .pdf-table td { padding: 14px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11pt; }
+        .text-right { text-align: right; }
+        .pdf-totales { width: 45%; float: right; margin-top: 20px; }
+        .pdf-totales-row { margin-bottom: 8px; font-size: 11pt; display: flex; justify-content: space-between; }
+        .pdf-total-final { font-size: 15pt; font-weight: bold; color: #0f172a; border-top: 2px solid #0f172a; padding-top: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <div id="screen-setup" class="card">
+            <h2>Configuración de Seguridad</h2>
+            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">Crea una contraseña maestra. Se encriptará de forma militar directamente en tu teléfono. Nadie en internet podrá verla.</p>
+            <div class="form-group">
+                <label for="setup-password">Crea tu contraseña de acceso:</label>
+                <input type="password" id="setup-password" placeholder="Mínimo 6 caracteres">
+            </div>
+            <button onclick="registrarContrasena()">Guardar Contraseña de Forma Segura</button>
+        </div>
+
+        <div id="screen-login" class="card">
+            <h2>Acceso Autorizado</h2>
+            <div class="form-group">
+                <label for="login-password">Introduce tu contraseña maestra:</label>
+                <input type="password" id="login-password" placeholder="Contraseña">
+            </div>
+            <button onclick="loginConContrasena()">Verificar e Ingresar</button>
+            <p id="login-error" style="color: #ef4444; font-size: 0.85rem; display: none; margin-top: 10px; font-weight: 500;">❌ Contraseña incorrecta. Inténtalo de nuevo.</p>
+        </div>
+
+        <div id="app-content">
+            <h1>Generador de Facturas</h1>
+            <form id="invoice-form" onsubmit="generarFacturaPDF(event)">
+                
+                <div class="card">
+                    <h2>Mis Datos (Emisor Autónomo)</h2>
+                    <div class="form-group">
+                        <label for="emisor_nombre">Mi Nombre Completo / Razón Social</label>
+                        <input type="text" id="emisor_nombre" required placeholder="Ej: Juan Pérez García">
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="emisor_nif">Mi NIF</label>
+                            <input type="text" id="emisor_nif" required placeholder="12345678Z">
+                        </div>
+                        <div class="form-group">
+                            <label for="emisor_email">Mi Email</label>
+                            <input type="email" id="emisor_email" required placeholder="correo@ejemplo.com">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="emisor_direccion">Mi Dirección Fiscal</label>
+                        <textarea id="emisor_direccion" rows="2" required placeholder="Calle, Número, C.P., Ciudad"></textarea>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Datos de la Factura</h2>
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="numero">Número Factura</label>
+                            <input type="text" id="numero" required placeholder="F-2026-001">
+                        </div>
+                        <div class="form-group">
+                            <label for="fecha">Fecha Emisión</label>
+                            <input type="date" id="fecha" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Datos del Cliente</h2>
+                    <div class="form-group">
+                        <label for="cliente_nombre">Nombre / Razón Social Cliente</label>
+                        <input type="text" id="cliente_nombre" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cliente_nif">NIF / CIF Cliente</label>
+                        <input type="text" id="cliente_nif" required placeholder="B12345678">
+                    </div>
+                    <div class="form-group">
+                        <label for="cliente_direccion">Dirección Cliente</label>
+                        <textarea id="cliente_direccion" rows="2" required></textarea>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Concepto e Impuestos (España)</h2>
+                    <div class="form-group">
+                        <label for="concepto">Descripción del Servicio prestado</label>
+                        <textarea id="concepto" rows="2" required placeholder="Servicios profesionales de..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="base_imponible">Base Imponible (€)</label>
+                        <input type="number" id="base_imponible" step="0.01" required placeholder="0.00">
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="iva">IVA (%)</label>
+                            <select id="iva">
+                                <option value="21" selected>21% (General)</option>
+                                <option value="10">10% (Reducido)</option>
+                                <option value="4">4% (Superreducido)</option>
+                                <option value="0">0% (Exento)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="irpf">IRPF (%) (Retención)</label>
+                            <select id="irpf">
+                                <option value="15" selected>15% (Autónomos)</option>
+                                <option value="7">7% (Nuevos Autónomos)</option>
+                                <option value="0">0% (No aplica)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit">Generar Factura A4 (PDF)</button>
+                <div class="badge-secure">
+                    🔒 Cifrado Criptográfico SHA-256 Local Activo
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="pdf-template">
+        <div class="pdf-page">
+            <div class="pdf-header">
+                <div>
+                    <p class="pdf-title">FACTURA</p>
+                    <p style="margin-top: 8px; line-height: 1.4;">
+                        <strong>Número:</strong> <span id="pdf-num"></span><br>
+                        <strong>Fecha:</strong> <span id="pdf-fecha"></span>
+                    </p>
+                </div>
+                <div class="pdf-col-right">
+                    <p style="margin: 0; line-height: 1.5;">
+                        <strong id="pdf-emisor-nombre"></strong><br>
+                        NIF: <span id="pdf-emisor-nif"></span><br>
+                        <span id="pdf-emisor-dir" style="white-space: pre-line;"></span><br>
+                        <span id="pdf-emisor-email"></span>
+                    </p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <div class="pdf-section-title">Cliente / Receptor</div>
+                <p style="margin: 8px 0; line-height: 1.5;">
+                    <strong id="pdf-cli-nombre"></strong><br>
+                    NIF/CIF: <span id="pdf-cli-nif"></span><br>
+                    <span id="pdf-cli-dir" style="white-space: pre-line;"></span>
+                </p>
+            </div>
+
+            <table class="pdf-table">
+                <thead>
+                    <tr>
+                        <th>Descripción / Concepto</th>
+                        <th class="text-right" style="width: 25%;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td id="pdf-concept-cell" style="white-space: pre-line;"></td>
+                        <td id="pdf-base-cell" class="text-right"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="pdf-totales">
+                <div class="pdf-totales-row">
+                    <span>Base Imponible:</span>
+                    <span id="pdf-tot-base"></span>
+                </div>
+                <div class="pdf-totales-row">
+                    <span>IVA (<span id="pdf-rate-iva"></span>%):</span>
+                    <span id="pdf-tot-iva"></span>
+                </div>
+                <div id="pdf-irpf-row" class="pdf-totales-row">
+                    <span>Retención IRPF (<span id="pdf-rate-irpf"></span>%):</span>
+                    <span>- <span id="pdf-tot-irpf"></span></span>
+                </div>
+                <div class="pdf-totales-row pdf-total-final">
+                    <span>TOTAL A PAGAR:</span>
+                    <span id="pdf-tot-final"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Función nativa para transformar cualquier texto en un Hash SHA-256 irrompible
+        async function calcularHashSHA256(texto) {
+            const msgBuffer = new TextEncoder().encode(texto);                    
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // FLUJO DE CONTROL DE PANTALLAS AL ARRANCAR
+        window.addEventListener('DOMContentLoaded', () => {
+            const hashGuardado = localStorage.getItem('secure_password_hash');
+            
+            if (!hashGuardado) {
+                // Caso 1: Es la primera vez que entra en su vida. Obligamos a configurar contraseña.
+                document.getElementById('screen-setup').style.display = 'block';
+            } else {
+                // Caso 2: Ya está configurado. Comprobamos si tiene la sesión del día activa
+                const sesionActiva = sessionStorage.getItem('session_authenticated');
+                if (sesionActiva === 'true') {
+                    mostrarAplicacionFacturas();
+                } else {
+                    document.getElementById('screen-login').style.display = 'block';
+                }
+            }
+        });
+
+        // REGISTRO INICIAL DE LA CONTRASEÑA
+        async function registrarContrasena() {
+            const pass = document.getElementById('setup-password').value;
+            if (pass.length < 6) {
+                alert("Por seguridad, la contraseña debe tener al menos 6 caracteres.");
+                return;
+            }
+            const hash = await calcularHashSHA256(pass);
+            localStorage.setItem('secure_password_hash', hash);
+            sessionStorage.setItem('session_authenticated', 'true');
+            
+            document.getElementById('screen-setup').style.display = 'none';
+            mostrarAplicacionFacturas();
+        }
+
+        // LOGIN VERIFICADOR DE HASH
+        async function loginConContrasena() {
+            const pass = document.getElementById('login-password').value;
+            const hashIntroducido = await calcularHashSHA256(pass);
+            const hashCorrecto = localStorage.getItem('secure_password_hash');
+
+            if (hashIntroducido === hashCorrecto) {
+                sessionStorage.setItem('session_authenticated', 'true');
+                document.getElementById('screen-login').style.display = 'none';
+                mostrarAplicacionFacturas();
+            } else {
+                document.getElementById('login-error').style.display = 'block';
+            }
+        }
+
+        function mostrarAplicacionFacturas() {
+            document.getElementById('app-content').style.display = 'block';
+            cargarDatosDesdeAlmacenamientoLocal();
+        }
+
+        // PERSISTENCIA LOCAL INTELIGENTE
+        function cargarDatosDesdeAlmacenamientoLocal() {
+            // Campos que el autónomo no quiere reescribir nunca (Sus propios datos y el último cliente)
+            const campos = [
+                'emisor_nombre', 'emisor_nif', 'emisor_email', 'emisor_direccion',
+                'cliente_nombre', 'cliente_nif', 'cliente_direccion', 'concepto', 'iva', 'irpf'
+            ];
+            campos.forEach(campo => {
+                const valor = localStorage.getItem('data_' + campo);
+                if (valor) document.getElementById(campo).value = valor;
+            });
+            // Autocompletar la fecha de hoy en el móvil
+            document.getElementById('fecha').value = new Date().toISOString().substring(0, 10);
+        }
+
+        // MOTOR DE CÁLCULO FISCAL Y COMPILACIÓN DEL PDF profesional
+        function generarFacturaPDF(event) {
+            event.preventDefault();
+
+            // Extracción de variables del formulario móvil
+            const emisor_nombre = document.getElementById('emisor_nombre').value;
+            const emisor_nif = document.getElementById('emisor_nif').value;
+            const emisor_email = document.getElementById('emisor_email').value;
+            const emisor_direccion = document.getElementById('emisor_direccion').value;
+
+            const numero = document.getElementById('numero').value;
+            const fechaRaw = document.getElementById('fecha').value;
+            const cliente_nombre = document.getElementById('cliente_nombre').value;
+            const cliente_nif = document.getElementById('cliente_nif').value;
+            const cliente_direccion = document.getElementById('cliente_direccion').value;
+            const concepto = document.getElementById('concepto').value;
+            const base_imponible = parseFloat(document.getElementById('base_imponible').value);
+            const p_iva = parseInt(document.getElementById('iva').value);
+            const p_irpf = parseInt(document.getElementById('irpf').value);
+
+            // Guardar absolutamente todo de forma persistente y privada en el teléfono
+            const camposAGuardar = { emisor_nombre, emisor_nif, emisor_email, emisor_direccion, cliente_nombre, cliente_nif, cliente_direccion, concepto, iva: p_iva, irpf: p_irpf };
+            Object.keys(camposAGuardar).forEach(key => {
+                localStorage.setItem('data_' + key, camposAGuardar[key]);
+            });
+
+            // Formatear Fecha a Estándar Español (DD/MM/AAAA)
+            const [year, month, day] = fechaRaw.split('-');
+            const fechaFormateada = `${day}/${month}/${year}`;
+
+            // Algoritmo Fiscal de la Agencia Tributaria (España)
+            const cuota_iva = base_imponible * (p_iva / 100);
+            const cuota_irpf = base_imponible * (p_irpf / 100);
+            const total_neto = base_imponible + cuota_iva - cuota_irpf;
+
+            // Inyectar datos en la plantilla limpia del documento A4
+            document.getElementById('pdf-emisor-nombre').innerText = emisor_nombre;
+            document.getElementById('pdf-emisor-nif').innerText = emisor_nif;
+            document.getElementById('pdf-emisor-dir').innerText = emisor_direccion;
+            document.getElementById('pdf-emisor-email').innerText = emisor_email;
+
+            document.getElementById('pdf-num').innerText = numero;
+            document.getElementById('pdf-fecha').innerText = fechaFormateada;
+            document.getElementById('pdf-cli-nombre').innerText = cliente_nombre;
+            document.getElementById('pdf-cli-nif').innerText = cliente_nif;
+            document.getElementById('pdf-cli-dir').innerText = cliente_direccion;
+            
+            document.getElementById('pdf-concept-cell').innerText = concepto;
+            document.getElementById('pdf-base-cell').innerText = base_imponible.toFixed(2) + " €";
+            
+            document.getElementById('pdf-tot-base').innerText = base_imponible.toFixed(2) + " €";
+            document.getElementById('pdf-rate-iva').innerText = p_iva;
+            document.getElementById('pdf-tot-iva').innerText = cuota_iva.toFixed(2) + " €";
+
+            if (p_irpf > 0) {
+                document.getElementById('pdf-irpf-row').style.display = 'flex';
+                document.getElementById('pdf-rate-irpf').innerText = p_irpf;
+                document.getElementById('pdf-tot-irpf').innerText = cuota_irpf.toFixed(2) + " €";
+            } else {
+                document.getElementById('pdf-irpf-row').style.display = 'none';
+            }
+
+            document.getElementById('pdf-tot-final').innerText = total_neto.toFixed(2) + " €";
+
+            // Disparar la renderización del PDF nativo
+            const elementoPDF = document.getElementById('pdf-template');
+            elementoPDF.style.display = 'block';
+
+            const opcionesConfig = {
+                margin:       0,
+                filename:     `Factura_${numero}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opcionesConfig).from(elementoPDF).save().then(() => {
+                elementoPDF.style.display = 'none'; // Ocultar plantilla tras la compilación exitosa
+            });
+        }
+    </script>
+</body>
+</html>

@@ -64,10 +64,20 @@
         
         #screen-setup, #screen-login, #app-content { display: none; }
 
-        /* REPARACIÓN ABSOLUTA DEL PDF PARA EVITAR PLUGINS DE LECTURA OSCUROS Y LLENAR EL FOLIO A4 */
+        /* REPARACIÓN DEL CONTENEDOR FANTASMA PARA QUE NO ROMPA EL LOGIN NI EL FORMULARIO */
+        #pdf-wrapper {
+            position: absolute;
+            top: 0;
+            left: -9999px; /* Lo saca por completo de la pantalla visible de la app */
+            width: 210mm;
+            overflow: hidden;
+            height: 0; /* No ocupa espacio vertical en las pantallas del formulario */
+            opacity: 0;
+        }
+
+        /* DISEÑO DE LA HOJA A4 DEL PDF */
         #pdf-template { 
-            display: none; 
-            color-scheme: light !important; /* Fuerza al navegador a ignorar extensiones de modo oscuro */
+            color-scheme: light !important; 
             font-family: Arial, sans-serif !important; 
             color: #333333 !important; 
             background: #ffffff !important; 
@@ -75,13 +85,12 @@
             padding: 20mm 15mm 20mm 15mm; 
             box-sizing: border-box;
             width: 210mm !important;
-            height: 297mm !important; /* Altura A4 estricta para llenar toda la página */
+            height: 297mm !important; 
             min-height: 297mm !important;
             display: flex !important;
             flex-direction: column;
         }
         
-        /* Forzado agresivo de herencia clara para evitar alteración por Dark Reader */
         #pdf-template * {
             color: #333333 !important;
             background-color: transparent !important;
@@ -107,7 +116,6 @@
         .pdf-table td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10pt; }
         .text-right { text-align: right; }
         
-        /* Empuja los totales y el IBAN al fondo del folio A4 */
         .pdf-footer-container {
             margin-top: auto; 
             width: 100%;
@@ -231,258 +239,10 @@
         </div>
     </div>
 
-    <div id="pdf-template">
-        <div class="pdf-header">
-            <div>
-                <p class="pdf-title">FACTURA</p>
-                <p style="margin-top: 8px; line-height: 1.4;">
-                    <strong>Número:</strong> <span id="pdf-num"></span><br>
-                    <strong>Fecha:</strong> <span id="pdf-fecha"></span>
-                </p>
-            </div>
-            <div class="pdf-col-right">
-                <p style="margin: 0; line-height: 1.5;">
-                    <strong id="pdf-emisor-nombre"></strong><br>
-                    NIF: <span id="pdf-emisor-nif"></span><br>
-                    <span id="pdf-emisor-dir" style="white-space: pre-line;"></span><br>
-                    <span id="pdf-emisor-email"></span>
-                </p>
-            </div>
-        </div>
-
-        <div style="margin-bottom: 25px;">
-            <div class="pdf-section-title">Cliente / Receptor</div>
-            <p style="margin: 8px 0; line-height: 1.5;">
-                <strong id="pdf-cli-nombre"></strong><br>
-                NIF/CIF: <span id="pdf-cli-nif"></span><br>
-                <span id="pdf-cli-dir" style="white-space: pre-line;"></span>
-            </p>
-        </div>
-
-        <table class="pdf-table">
-            <thead>
-                <tr>
-                    <th style="color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;">Descripción / Concepto</th>
-                    <th class="text-right" style="width: 25%; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;">Total</th>
-                </tr>
-            </thead>
-            <tbody id="pdf-tabla-items"></tbody>
-        </table>
-
-        <div class="pdf-footer-container">
-            <div class="pdf-totales">
-                <div class="pdf-totales-row">
-                    <span>Base Imponible:</span>
-                    <span id="pdf-tot-base"></span>
-                </div>
-                <div class="pdf-totales-row">
-                    <span>IVA (<span id="pdf-rate-iva"></span>%):</span>
-                    <span id="pdf-tot-iva"></span>
-                </div>
-                <div id="pdf-irpf-row" class="pdf-totales-row">
-                    <span>Retención IRPF (<span id="pdf-rate-irpf"></span>%):</span>
-                    <span>- <span id="pdf-tot-irpf"></span></span>
-                </div>
-                <div class="pdf-totales-row pdf-total-final">
-                    <span>TOTAL A PAGAR:</span>
-                    <span id="pdf-tot-final"></span>
-                </div>
-            </div>
-
-            <div class="pdf-iban-box">
-                <strong>Método de pago:</strong> Transferencia bancaria al número de cuenta:<br>
-                <span id="pdf-emisor-iban" style="font-family: monospace; font-size: 11pt; font-weight: bold; color: #0f172a !important; -webkit-text-fill-color: #0f172a !important;"></span>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        async function calcularHashSHA256(texto) {
-            const msgBuffer = new TextEncoder().encode(texto);                    
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const hashGuardado = localStorage.getItem('secure_password_hash');
-            if (!hashGuardado) {
-                document.getElementById('screen-setup').style.display = 'block';
-            } else {
-                if (sessionStorage.getItem('session_authenticated') === 'true') {
-                    mostrarAplicacionFacturas();
-                } else {
-                    document.getElementById('screen-login').style.display = 'block';
-                }
-            }
-        });
-
-        async function registrarContrasena() {
-            const pass = document.getElementById('setup-password').value;
-            if (pass.length < 6) { alert("Mínimo 6 caracteres."); return; }
-            localStorage.setItem('secure_password_hash', await calcularHashSHA256(pass));
-            sessionStorage.setItem('session_authenticated', 'true');
-            window.location.reload(); 
-        }
-
-        async function loginConContrasena() {
-            if (await calcularHashSHA256(document.getElementById('login-password').value) === localStorage.getItem('secure_password_hash')) {
-                sessionStorage.setItem('session_authenticated', 'true');
-                document.getElementById('screen-login').style.display = 'none';
-                mostrarAplicacionFacturas();
-            } else {
-                document.getElementById('login-error').style.display = 'block';
-            }
-        }
-
-        function mostrarAplicacionFacturas() {
-            document.getElementById('app-content').style.display = 'block';
-            cargarDatosDesdeAlmacenamientoLocal();
-        }
-
-        let contadorLineas = 0;
-        function agregarNuevaLineaFormulario(concepto = '', precio = '') {
-            contadorLineas++;
-            const contenedor = document.getElementById('contenedor-lineas');
-            const div = document.createElement('div');
-            div.className = 'linea-item';
-            div.id = `linea-${contadorLineas}`;
-            div.innerHTML = `
-                <button type="button" class="btn-eliminar" onclick="eliminarLineaFormulario(${contadorLineas})">Eliminar</button>
-                <div class="form-group">
-                    <label>Concepto / Servicio</label>
-                    <input type="text" class="input-concepto" required value="${concepto}">
-                </div>
-                <div class="form-group">
-                    <label>Importe (€)</label>
-                    <input type="number" class="input-precio" step="0.01" required value="${precio}">
-                </div>
-            `;
-            contenedor.appendChild(div);
-        }
-
-        function eliminarLineaFormulario(id) {
-            const linea = document.getElementById(`linea-${id}`);
-            if (linea) linea.remove();
-        }
-
-        function cargarDatosDesdeAlmacenamientoLocal() {
-            const camposFijos = ['emisor_nombre', 'emisor_nif', 'emisor_email', 'emisor_direccion', 'emisor_iban', 'cliente_nombre', 'cliente_nif', 'cliente_direccion', 'iva', 'irpf'];
-            camposFijos.forEach(campo => {
-                const valor = localStorage.getItem('data_' + campo);
-                if (valor && document.getElementById(campo)) document.getElementById(campo).value = valor;
-            });
-            
-            const itemsGuardados = localStorage.getItem('data_ultimos_items');
-            if (itemsGuardados) {
-                const items = JSON.parse(itemsGuardados);
-                items.forEach(item => agregarNuevaLineaFormulario(item.concepto, item.precio));
-            } else {
-                agregarNuevaLineaFormulario();
-            }
-            document.getElementById('fecha').value = new Date().toISOString().substring(0, 10);
-        }
-
-        function generarFacturaPDF(event) {
-            event.preventDefault();
-
-            const emisor_nombre = document.getElementById('emisor_nombre').value;
-            const emisor_nif = document.getElementById('emisor_nif').value;
-            const emisor_email = document.getElementById('emisor_email').value; 
-            const emisor_direccion = document.getElementById('emisor_direccion').value;
-            const emisor_iban = document.getElementById('emisor_iban').value;
-
-            const numero = document.getElementById('numero').value;
-            const fechaRaw = document.getElementById('fecha').value;
-            const cliente_nombre = document.getElementById('cliente_nombre').value;
-            const cliente_nif = document.getElementById('cliente_nif').value;
-            const cliente_direccion = document.getElementById('cliente_direccion').value;
-            const p_iva = parseInt(document.getElementById('iva').value);
-            const p_irpf = parseInt(document.getElementById('irpf').value);
-
-            const bloquesLineas = document.querySelectorAll('.linea-item');
-            if (bloquesLineas.length === 0) { alert("Añade al menos un servicio."); return; }
-
-            let base_imponible = 0;
-            const listaItemsParaGuardar = [];
-            const tablaPdfBody = document.getElementById('pdf-tabla-items');
-            tablaPdfBody.innerHTML = ''; 
-
-            bloquesLineas.forEach(bloque => {
-                const concepto = bloque.querySelector('.input-concepto').value;
-                const precio = parseFloat(bloque.querySelector('.input-precio').value) || 0;
-                
-                base_imponible += precio;
-                listaItemsParaGuardar.push({ concepto, precio });
-
-                const fila = document.createElement('tr');
-                fila.innerHTML = `
-                    <td style="white-space: pre-line; word-break: break-word;">${concepto}</td>
-                    <td class="text-right">${precio.toFixed(2)} €</td>
-                `;
-                tablaPdfBody.appendChild(fila);
-            });
-
-            const camposAGuardar = { emisor_nombre, emisor_nif, emisor_email, emisor_direccion, emisor_iban, cliente_nombre, cliente_nif, cliente_direccion, iva: p_iva, irpf: p_irpf };
-            Object.keys(camposAGuardar).forEach(key => localStorage.setItem('data_' + key, camposAGuardar[key]));
-            localStorage.setItem('data_ultimos_items', JSON.stringify(listaItemsParaGuardar));
-
-            const cuota_iva = base_imponible * (p_iva / 100);
-            const cuota_irpf = base_imponible * (p_irpf / 100);
-            const total_neto = base_imponible + cuota_iva - cuota_irpf;
-
-            const [year, month, day] = fechaRaw.split('-');
-            const fechaFormateada = `${day}/${month}/${year}`;
-
-            document.getElementById('pdf-emisor-nombre').innerText = emisor_nombre;
-            document.getElementById('pdf-emisor-nif').innerText = emisor_nif;
-            document.getElementById('pdf-emisor-dir').innerText = emisor_direccion;
-            document.getElementById('pdf-emisor-iban').innerText = emisor_iban;
-
-            if(emisor_email.trim() !== "") {
-                document.getElementById('pdf-emisor-email').innerText = emisor_email;
-            } else {
-                document.getElementById('pdf-emisor-email').innerText = "";
-            }
-
-            document.getElementById('pdf-num').innerText = numero;
-            document.getElementById('pdf-fecha').innerText = fechaFormateada;
-            document.getElementById('pdf-cli-nombre').innerText = cliente_nombre;
-            document.getElementById('pdf-cli-nif').innerText = cliente_nif;
-            document.getElementById('pdf-cli-dir').innerText = cliente_direccion;
-            
-            document.getElementById('pdf-tot-base').innerText = base_imponible.toFixed(2) + " €";
-            document.getElementById('pdf-rate-iva').innerText = p_iva;
-            document.getElementById('pdf-tot-iva').innerText = cuota_iva.toFixed(2) + " €";
-
-            if (p_irpf > 0) {
-                document.getElementById('pdf-irpf-row').style.display = 'flex';
-                document.getElementById('pdf-rate-irpf').innerText = p_irpf;
-                document.getElementById('pdf-tot-irpf').innerText = cuota_irpf.toFixed(2) + " €";
-            } else {
-                document.getElementById('pdf-irpf-row').style.display = 'none';
-            }
-            document.getElementById('pdf-tot-final').innerText = total_neto.toFixed(2) + " €";
-
-            // Forzar visualización flex estricta antes de la foto
-            const elementoPDF = document.getElementById('pdf-template');
-            elementoPDF.style.setProperty('display', 'flex', 'important');
-
-            const opcionesConfig = {
-                margin:       0, // Ponemos margen 0 aquí porque los 20mm ya los gestiona el CSS interno perfectamente
-                filename:     `Factura_${numero}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' }, 
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            html2pdf().set(opcionesConfig).from(elementoPDF).save().then(() => {
-                elementoPDF.style.setProperty('display', 'none', 'important');
-            }).catch(err => {
-                console.error(err);
-                elementoPDF.style.setProperty('display', 'none', 'important');
-            });
-        }
-    </script>
-</body>
-</html>
+    <div id="pdf-wrapper">
+        <div id="pdf-template">
+            <div class="pdf-header">
+                <div>
+                    <p class="pdf-title">FACTURA</p>
+                    <p style="margin-top: 8px; line-height: 1.4;">
+                        <strong>

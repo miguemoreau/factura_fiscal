@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generador de Facturas Profesional</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
     
     <style>
-        /* 1. SECCIÓN DE ESTILOS CSS */
+        /* 1. SECCIÓN DE ESTILOS INTERFAZ MÓVIL/PC */
         :root {
             --bg-color: #f8fafc;
             --card-bg: #ffffff;
@@ -66,16 +66,16 @@
         
         #screen-setup, #screen-login, #app-content { display: none; }
 
-        /* VISTA PREVIA DEL PDF REPARADA (La dejamos visible en el DOM pero oculta mediante opacidad y desubicación absoluta) */
-        #pdf-wrapper {
-            position: absolute;
-            left: -9999px;
-            top: 0;
-            width: 210mm;
-            opacity: 1;
-            z-index: -1;
+        /* 2. SECCIÓN DE ESTILOS DEL PDF (Volvemos a ocultarlo de forma estricta para el control de renderizado instantáneo) */
+        #pdf-template { 
+            display: none; 
+            font-family: Arial, sans-serif; 
+            color: #333; 
+            padding: 20mm; 
+            background: white; 
+            box-sizing: border-box;
+            width: 210mm; /* Forzamos ancho A4 estricto */
         }
-        .pdf-page { font-family: Arial, sans-serif; color: #333; padding: 20mm; background: white; box-sizing: border-box; }
         .pdf-header { margin-bottom: 40px; display: flex; justify-content: space-between; }
         .pdf-title { font-size: 28pt; color: #0f172a; font-weight: bold; margin: 0; letter-spacing: -1px; }
         .pdf-col-right { text-align: right; }
@@ -205,68 +205,66 @@
         </div>
     </div>
 
-    <div id="pdf-wrapper">
-        <div id="pdf-template" class="pdf-page">
-            <div class="pdf-header">
-                <div>
-                    <p class="pdf-title">FACTURA</p>
-                    <p style="margin-top: 8px; line-height: 1.4;">
-                        <strong>Número:</strong> <span id="pdf-num"></span><br>
-                        <strong>Fecha:</strong> <span id="pdf-fecha"></span>
-                    </p>
-                </div>
-                <div class="pdf-col-right">
-                    <p style="margin: 0; line-height: 1.5;">
-                        <strong id="pdf-emisor-nombre"></strong><br>
-                        NIF: <span id="pdf-emisor-nif"></span><br>
-                        <span id="pdf-emisor-dir" style="white-space: pre-line;"></span><br>
-                        <span id="pdf-emisor-email"></span>
-                    </p>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <div class="pdf-section-title">Cliente / Receptor</div>
-                <p style="margin: 8px 0; line-height: 1.5;">
-                    <strong id="pdf-cli-nombre"></strong><br>
-                    NIF/CIF: <span id="pdf-cli-nif"></span><br>
-                    <span id="pdf-cli-dir" style="white-space: pre-line;"></span>
+    <div id="pdf-template">
+        <div class="pdf-header">
+            <div>
+                <p class="pdf-title">FACTURA</p>
+                <p style="margin-top: 8px; line-height: 1.4;">
+                    <strong>Número:</strong> <span id="pdf-num"></span><br>
+                    <strong>Fecha:</strong> <span id="pdf-fecha"></span>
                 </p>
             </div>
-
-            <table class="pdf-table">
-                <thead>
-                    <tr>
-                        <th>Descripción / Concepto</th>
-                        <th class="text-right" style="width: 25%;">Total</th>
-                    </tr>
-                </thead>
-                <tbody id="pdf-tabla-items"></tbody>
-            </table>
-
-            <div class="pdf-totales">
-                <div class="pdf-totales-row">
-                    <span>Base Imponible:</span>
-                    <span id="pdf-tot-base"></span>
-                </div>
-                <div class="pdf-totales-row">
-                    <span>IVA (<span id="pdf-rate-iva"></span>%):</span>
-                    <span id="pdf-tot-iva"></span>
-                </div>
-                <div id="pdf-irpf-row" class="pdf-totales-row">
-                    <span>Retención IRPF (<span id="pdf-rate-irpf"></span>%):</span>
-                    <span>- <span id="pdf-tot-irpf"></span></span>
-                </div>
-                <div class="pdf-totales-row pdf-total-final">
-                    <span>TOTAL A PAGAR:</span>
-                    <span id="pdf-tot-final"></span>
-                </div>
+            <div class="pdf-col-right">
+                <p style="margin: 0; line-height: 1.5;">
+                    <strong id="pdf-emisor-nombre"></strong><br>
+                    NIF: <span id="pdf-emisor-nif"></span><br>
+                    <span id="pdf-emisor-dir" style="white-space: pre-line;"></span><br>
+                    <span id="pdf-emisor-email"></span>
+                </p>
             </div>
+        </div>
 
-            <div class="pdf-iban-box">
-                <strong>Método de pago:</strong> Transferencia bancaria al número de cuenta:<br>
-                <span id="pdf-emisor-iban" style="font-family: monospace; font-size: 11pt; font-weight: bold; color: #0f172a;"></span>
+        <div style="margin-bottom: 30px;">
+            <div class="pdf-section-title">Cliente / Receptor</div>
+            <p style="margin: 8px 0; line-height: 1.5;">
+                <strong id="pdf-cli-nombre"></strong><br>
+                NIF/CIF: <span id="pdf-cli-nif"></span><br>
+                <span id="pdf-cli-dir" style="white-space: pre-line;"></span>
+            </p>
+        </div>
+
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th>Descripción / Concepto</th>
+                    <th class="text-right" style="width: 25%;">Total</th>
+                </tr>
+            </thead>
+            <tbody id="pdf-tabla-items"></tbody>
+        </table>
+
+        <div class="pdf-totales">
+            <div class="pdf-totales-row">
+                <span>Base Imponible:</span>
+                <span id="pdf-tot-base"></span>
             </div>
+            <div class="pdf-totales-row">
+                <span>IVA (<span id="pdf-rate-iva"></span>%):</span>
+                <span id="pdf-tot-iva"></span>
+            </div>
+            <div id="pdf-irpf-row" class="pdf-totales-row">
+                <span>Retención IRPF (<span id="pdf-rate-irpf"></span>%):</span>
+                <span>- <span id="pdf-tot-irpf"></span></span>
+            </div>
+            <div class="pdf-totales-row pdf-total-final">
+                <span>TOTAL A PAGAR:</span>
+                <span id="pdf-tot-final"></span>
+            </div>
+        </div>
+
+        <div class="pdf-iban-box">
+            <strong>Método de pago:</strong> Transferencia bancaria al número de cuenta:<br>
+            <span id="pdf-emisor-iban" style="font-family: monospace; font-size: 11pt; font-weight: bold; color: #0f172a;"></span>
         </div>
     </div>
 
@@ -296,8 +294,7 @@
             if (pass.length < 6) { alert("Mínimo 6 caracteres."); return; }
             localStorage.setItem('secure_password_hash', await calcularHashSHA256(pass));
             sessionStorage.setItem('session_authenticated', 'true');
-            document.getElementById('screen-setup').style.none = 'none';
-            window.location.reload(); // Recarga limpia para activar la app
+            window.location.reload(); 
         }
 
         async function loginConContrasena() {
@@ -358,8 +355,8 @@
             document.getElementById('fecha').value = new Date().toISOString().substring(0, 10);
         }
 
-        // CAMBIO CRUCIAL: Añadimos 'async' a la función para poder congelar el tiempo
-        async function generarFacturaPDF(event) {
+        // CAMBIO MAESTRO DE CAPTURA REAL POR INTERCAMBIO
+        function generarFacturaPDF(event) {
             event.preventDefault();
 
             const emisor_nombre = document.getElementById('emisor_nombre').value;
@@ -393,7 +390,7 @@
 
                 const fila = document.createElement('tr');
                 fila.innerHTML = `
-                    <td style="white-space: pre-line;">${concepto}</td>
+                    <td style="white-space: pre-line; word-break: break-word;">${concepto}</td>
                     <td class="text-right">${precio.toFixed(2)} €</td>
                 `;
                 tablaPdfBody.appendChild(fila);
@@ -435,21 +432,25 @@
             }
             document.getElementById('pdf-tot-final').innerText = total_neto.toFixed(2) + " €";
 
-            // PARCHE DE TIEMPO ASÍNCRONO: Forzamos una pausa de 250 milisegundos.
-            // Esto le da tiempo al procesador de la computadora a renderizar las nuevas celdas de la tabla.
-            await new Promise(resolve => setTimeout(resolve, 250));
-
-            // Ahora que los datos están 100% pintados, ejecutamos html2pdf con seguridad
+            // PASO CLAVE: Forzamos la visualización real del PDF en el DOM para la foto
             const elementoPDF = document.getElementById('pdf-template');
+            elementoPDF.style.display = 'block';
+
             const opcionesConfig = {
-                margin:       0,
+                margin:       [10, 10, 10, 10], // Añadimos márgenes estándar de impresión para evitar cortes
                 filename:     `Factura_${numero}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opcionesConfig).from(elementoPDF).save();
+            // Ejecutamos html2pdf e inmediatamente después volvemos a ocultar el elemento
+            html2pdf().set(opcionesConfig).from(elementoPDF).save().then(() => {
+                elementoPDF.style.display = 'none';
+            }).catch(err => {
+                console.error(err);
+                elementoPDF.style.display = 'none';
+            });
         }
     </script>
 </body>

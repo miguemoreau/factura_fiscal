@@ -44,6 +44,31 @@
         .row { display: flex; gap: 12px; }
         .row .form-group { flex: 1; }
         
+        /* Gestión de perfiles en cabecera de tarjeta */
+        .perfil-box {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px dashed #cbd5e1;
+        }
+        .perfil-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .perfil-actions button {
+            flex: 1;
+            padding: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-perfil-save { background-color: var(--success-color); color: white; }
+        .btn-perfil-del { background-color: var(--danger-color); color: white; }
+
         .linea-item {
             background: #f8fafc;
             padding: 12px;
@@ -61,28 +86,22 @@
         button.secondary {
             width: 100%; background-color: #e2e8f0; color: #334155; border: none; padding: 12px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-bottom: 10px;
         }
-        
-        #screen-setup, #screen-login, #app-content { display: none; }
 
-        /* REPARACIÓN DEL TEMPLATE DEL PDF (Invisible en Login/Formulario pero perfectamente detectable por html2pdf) */
+        /* CONFIGURACIÓN DEL TEMPLATE DEL PDF */
         #pdf-template { 
+            display: none;
             position: absolute;
+            left: -9999px;
             top: 0;
-            left: 0;
-            width: 190mm; 
-            opacity: 0;
-            z-index: -1;
-            pointer-events: none;
-            display: block !important; 
             color-scheme: light !important; 
             font-family: Arial, sans-serif !important; 
             color: #333333 !important; 
             background: #ffffff !important; 
             background-color: #ffffff !important;
+            padding: 20mm 15mm; 
             box-sizing: border-box;
         }
         
-        /* Blindaje estricto de textos oscuros contra extensiones modo noche */
         #pdf-template * {
             color: #333333 !important;
             background-color: transparent !important;
@@ -90,12 +109,12 @@
             -webkit-text-fill-color: #333333 !important;
         }
         
-        .pdf-header { margin-bottom: 25px; display: flex; justify-content: space-between; }
+        .pdf-header { margin-bottom: 30px; display: flex; justify-content: space-between; }
         .pdf-title { font-size: 26pt; color: #0f172a !important; -webkit-text-fill-color: #0f172a !important; font-weight: bold; margin: 0; letter-spacing: -1px; }
         .pdf-col-right { text-align: right; }
         .pdf-section-title { font-size: 9pt; color: #64748b !important; -webkit-text-fill-color: #64748b !important; text-transform: uppercase; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; letter-spacing: 0.5px; }
         
-        .pdf-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 25px; }
         .pdf-table th { 
             background-color: #0f172a !important; 
             color: #ffffff !important; 
@@ -105,21 +124,14 @@
             font-size: 9pt; 
             text-transform: uppercase; 
         }
-        .pdf-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 10pt; }
+        .pdf-table td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10pt; }
         .text-right { text-align: right; }
         
-        /* FILA ESPACIADORA: Fuerza la altura A4 de la hoja de forma limpia sin romper el layout */
-        .pdf-espaciador {
-            height: 380px; 
-            border-bottom: none !important;
-        }
-        
         .pdf-footer-container {
-            margin-top: 20px; 
+            margin-top: 30px; 
             width: 100%;
-            page-break-inside: avoid; /* Asegura que el bloque total e IBAN nunca se separen */
         }
-        .pdf-totales { width: 45%; float: right; margin-bottom: 25px; }
+        .pdf-totales { width: 45%; float: right; margin-bottom: 30px; }
         .pdf-totales-row { margin-bottom: 6px; font-size: 10pt; display: flex; justify-content: space-between; }
         .pdf-total-final { font-size: 13pt; font-weight: bold; color: #0f172a !important; -webkit-text-fill-color: #0f172a !important; border-top: 2px solid #0f172a; padding-top: 6px; }
         .pdf-iban-box { font-size: 9pt; color: #475569 !important; -webkit-text-fill-color: #475569 !important; border-top: 1px dashed #cbd5e1; padding-top: 15px; clear: both; }
@@ -128,114 +140,105 @@
 <body>
 
     <div class="container">
-        <div id="screen-setup" class="card">
-            <h2>Configuración de Seguridad</h2>
-            <div class="form-group">
-                <label for="setup-password">Crea tu contraseña de acceso:</label>
-                <input type="password" id="setup-password" placeholder="Mínimo 6 caracteres">
-            </div>
-            <button class="primary" onclick="registrarContrasena()">Guardar Contraseña</button>
-        </div>
-
-        <div id="screen-login" class="card">
-            <h2>Acceso Autorizado</h2>
-            <div class="form-group">
-                <label for="login-password">Introduce tu contraseña maestra:</label>
-                <input type="password" id="login-password" placeholder="Contraseña">
-            </div>
-            <button class="primary" onclick="loginConContrasena()">Verificar e Ingresar</button>
-            <p id="login-error" style="color: #ef4444; font-size: 0.85rem; display: none; margin-top: 10px; font-weight: 500;">❌ Contraseña incorrecta.</p>
-        </div>
-
-        <div id="app-content">
-            <h1>Generador de Facturas</h1>
-            <form id="invoice-form" onsubmit="generarFacturaPDF(event)">
+        <h1>Generador de Facturas</h1>
+        <form id="invoice-form" onsubmit="generarFacturaPDF(event)">
+            
+            <div class="card">
+                <h2>Mis Datos (Emisor Autónomo)</h2>
                 
-                <div class="card">
-                    <h2>Mis Datos (Emisor Autónomo)</h2>
-                    <div class="form-group">
-                        <label for="emisor_nombre">Mi Nombre Completo / Razón Social</label>
-                        <input type="text" id="emisor_nombre" required>
-                    </div>
-                    <div class="row">
-                        <div class="form-group">
-                            <label for="emisor_nif">Mi NIF</label>
-                            <input type="text" id="emisor_nif" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="emisor_email">Mi Email (Opcional)</label>
-                            <input type="email" id="emisor_email">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="emisor_direccion">Mi Dirección Fiscal</label>
-                        <textarea id="emisor_direccion" rows="2" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="emisor_iban">Mi Cuenta Bancaria (IBAN)</label>
-                        <input type="text" id="emisor_iban" required placeholder="ESXX XXXX XXXX XXXX XXXX XXXX">
+                <div class="perfil-box">
+                    <label for="perfil_selector">Seleccionar perfil emisor guardado:</label>
+                    <select id="perfil_selector" onchange="cambiarPerfilSeleccionado()">
+                        <option value="">-- Crear o elegir un perfil --</option>
+                    </select>
+                    <div class="perfil-actions">
+                        <button type="button" class="btn-perfil-save" onclick="guardarPerfilActual()">💾 Guardar / Actualizar Perfil</button>
+                        <button type="button" class="btn-perfil-del" onclick="eliminarPerfilActual()">❌ Eliminar Perfil</button>
                     </div>
                 </div>
 
-                <div class="card">
-                    <h2>Datos de la Factura</h2>
-                    <div class="row">
-                        <div class="form-group">
-                            <label for="numero">Número Factura</label>
-                            <input type="text" id="numero" required placeholder="F-2026-001">
-                        </div>
-                        <div class="form-group">
-                            <label for="fecha">Fecha Emisión</label>
-                            <input type="date" id="fecha" required>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <label for="emisor_nombre">Mi Nombre Completo / Razón Social</label>
+                    <input type="text" id="emisor_nombre" required>
                 </div>
-
-                <div class="card">
-                    <h2>Datos del Cliente</h2>
+                <div class="row">
                     <div class="form-group">
-                        <label for="cliente_nombre">Nombre / Razón Social Cliente</label>
-                        <input type="text" id="cliente_nombre" required>
+                        <label for="emisor_nif">Mi NIF</label>
+                        <input type="text" id="emisor_nif" required>
                     </div>
                     <div class="form-group">
-                        <label for="cliente_nif">NIF / CIF Cliente</label>
-                        <input type="text" id="cliente_nif" required>
+                        <label for="emisor_email">Mi Email (Opcional)</label>
+                        <input type="email" id="emisor_email">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="emisor_direccion">Mi Dirección Fiscal</label>
+                    <textarea id="emisor_direccion" rows="2" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="emisor_iban">Mi Cuenta Bancaria (IBAN)</label>
+                    <input type="text" id="emisor_iban" required placeholder="ESXX XXXX XXXX XXXX XXXX XXXX">
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Datos de la Factura</h2>
+                <div class="row">
+                    <div class="form-group">
+                        <label for="numero">Número Factura</label>
+                        <input type="text" id="numero" required placeholder="F-2026-001">
                     </div>
                     <div class="form-group">
-                        <label for="cliente_direccion">Dirección Cliente</label>
-                        <textarea id="cliente_direccion" rows="2" required></textarea>
+                        <label for="fecha">Fecha Emisión</label>
+                        <input type="date" id="fecha" required>
                     </div>
                 </div>
+            </div>
 
-                <div class="card">
-                    <h2>Servicios / Ítems Facturados</h2>
-                    <div id="contenedor-lineas"></div>
-                    <button type="button" class="secondary" onclick="agregarNuevaLineaFormulario()">+ Añadir Servicio / Ítem</button>
-                    
-                    <div class="row" style="margin-top: 10px;">
-                        <div class="form-group">
-                            <label for="iva">IVA (%)</label>
-                            <select id="iva">
-                                <option value="21" selected>21%</option>
-                                <option value="10">10%</option>
-                                <option value="4">4%</option>
-                                <option value="0">0%</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="irpf">IRPF (%) (Retención)</label>
-                            <select id="irpf">
-                                <option value="15" selected>15%</option>
-                                <option value="7">7%</option>
-                                <option value="0">0%</option>
-                            </select>
-                        </div>
+            <div class="card">
+                <h2>Datos del Cliente</h2>
+                <div class="form-group">
+                    <label for="cliente_nombre">Nombre / Razón Social Cliente</label>
+                    <input type="text" id="cliente_nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="cliente_nif">NIF / CIF Cliente</label>
+                    <input type="text" id="cliente_nif" required>
+                </div>
+                <div class="form-group">
+                    <label for="cliente_direccion">Dirección Cliente</label>
+                    <textarea id="cliente_direccion" rows="2" required></textarea>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Servicios / Ítems Facturados</h2>
+                <div id="contenedor-lineas"></div>
+                <button type="button" class="secondary" onclick="agregarNuevaLineaFormulario()">+ Añadir Servicio / Ítem</button>
+                
+                <div class="row" style="margin-top: 10px;">
+                    <div class="form-group">
+                        <label for="iva">IVA (%)</label>
+                        <select id="iva">
+                            <option value="21" selected>21%</option>
+                            <option value="10">10%</option>
+                            <option value="4">4%</option>
+                            <option value="0">0%</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="irpf">IRPF (%) (Retención)</label>
+                        <select id="irpf">
+                            <option value="15" selected>15%</option>
+                            <option value="7">7%</option>
+                            <option value="0">0%</option>
+                        </select>
                     </div>
                 </div>
+            </div>
 
-                <button type="submit" class="primary">Generar Factura A4 (PDF)</button>
-            </form>
-        </div>
+            <button type="submit" class="primary">Generar Factura (PDF)</button>
+        </form>
     </div>
 
     <div id="pdf-template">
@@ -274,12 +277,6 @@
                 </tr>
             </thead>
             <tbody id="pdf-tabla-items"></tbody>
-            <tbody>
-                <tr>
-                    <td class="pdf-espaciador"></td>
-                    <td style="border-bottom: none !important;"></td>
-                </tr>
-            </tbody>
         </table>
 
         <div class="pdf-footer-container">
@@ -310,49 +307,97 @@
     </div>
 
     <script>
-        async function calcularHashSHA256(texto) {
-            const msgBuffer = new TextEncoder().encode(texto);                    
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
+        // LÓGICA DEL GESTOR DE PERFILES EN LOCALSTORAGE
+        let perfilesGuardados = {};
 
         window.addEventListener('DOMContentLoaded', () => {
-            const hashGuardado = localStorage.getItem('secure_password_hash');
-            if (!hashGuardado) {
-                document.getElementById('screen-setup').style.display = 'block';
-            } else {
-                if (sessionStorage.getItem('session_authenticated') === 'true') {
-                    mostrarAplicacionFacturas();
-                } else {
-                    document.getElementById('screen-login').style.display = 'block';
-                }
-            }
+            cargarPerfilesDesdeStorage();
+            cargarDatosDesdeAlmacenamientoLocal();
         });
 
-        async function registrarContrasena() {
-            const pass = document.getElementById('setup-password').value;
-            if (pass.length < 6) { alert("Mínimo 6 caracteres."); return; }
-            localStorage.setItem('secure_password_hash', await calcularHashSHA256(pass));
-            sessionStorage.setItem('session_authenticated', 'true');
-            window.location.reload(); 
+        function cargarPerfilesDesdeStorage() {
+            const data = localStorage.getItem('factura_perfiles_emisor');
+            if (data) {
+                perfilesGuardados = JSON.parse(data);
+            } else {
+                perfilesGuardados = {};
+            }
+            actualizarDropdownPerfiles();
         }
 
-        async function loginConContrasena() {
-            if (await calcularHashSHA256(document.getElementById('login-password').value) === localStorage.getItem('secure_password_hash')) {
-                sessionStorage.setItem('session_authenticated', 'true');
-                document.getElementById('screen-login').style.display = 'none';
-                mostrarAplicacionFacturas();
-            } else {
-                document.getElementById('login-error').style.display = 'block';
+        function actualizarDropdownPerfiles() {
+            const selector = document.getElementById('perfil_selector');
+            selector.innerHTML = '<option value="">-- Crear o elegir un perfil --</option>';
+            
+            Object.keys(perfilesGuardados).forEach(nombrePerfil => {
+                const opt = document.createElement('option');
+                opt.value = nombrePerfil;
+                opt.innerText = nombrePerfil;
+                selector.appendChild(opt);
+            });
+        }
+
+        function guardarPerfilActual() {
+            const nombre = document.getElementById('emisor_nombre').value.trim();
+            const nif = document.getElementById('emisor_nif').value.trim();
+            const email = document.getElementById('emisor_email').value.trim();
+            const direccion = document.getElementById('emisor_direccion').value.trim();
+            const iban = document.getElementById('emisor_iban').value.trim();
+
+            if (!nombre || !nif || !direccion || !iban) {
+                alert("Por favor, rellena los datos mínimos del emisor para poder guardar este perfil.");
+                return;
+            }
+
+            const nombrePerfil = prompt("Introduce un nombre identificativo para este perfil (Ej: Consultoría, Diseño, Mi Nombre):", nombre);
+            if (!nombrePerfil) return;
+
+            perfilesGuardados[nombrePerfil] = { nombre, nif, email, direccion, iban };
+            localStorage.setItem('factura_perfiles_emisor', JSON.stringify(perfilesGuardados));
+            
+            actualizarDropdownPerfiles();
+            document.getElementById('perfil_selector').value = nombrePerfil;
+            alert(`Perfil "${nombrePerfil}" guardado con éxito.`);
+        }
+
+        function cambiarPerfilSeleccionado() {
+            const selector = document.getElementById('perfil_selector');
+            const nombrePerfil = selector.value;
+
+            if (!nombrePerfil || !perfilesGuardados[nombrePerfil]) return;
+
+            const perfil = perfilesGuardados[nombrePerfil];
+            document.getElementById('emisor_nombre').value = perfil.nombre;
+            document.getElementById('emisor_nif').value = perfil.nif;
+            document.getElementById('emisor_email').value = perfil.email;
+            document.getElementById('emisor_direccion').value = perfil.direccion;
+            document.getElementById('emisor_iban').value = perfil.iban;
+        }
+
+        function eliminarPerfilActual() {
+            const selector = document.getElementById('perfil_selector');
+            const nombrePerfil = selector.value;
+
+            if (!nombrePerfil) {
+                alert("Selecciona primero del menú desplegable el perfil que deseas eliminar.");
+                return;
+            }
+
+            if (confirm(`¿Estás seguro de que deseas eliminar el perfil "${nombrePerfil}"?`)) {
+                delete perfilesGuardados[nombrePerfil];
+                localStorage.setItem('factura_perfiles_emisor', JSON.stringify(perfilesGuardados));
+                actualizarDropdownPerfiles();
+                
+                // Limpiar campos visuales
+                document.getElementById('emisor_nombre').value = '';
+                document.getElementById('emisor_nif').value = '';
+                document.getElementById('emisor_email').value = '';
+                document.getElementById('emisor_direccion').value = '';
+                document.getElementById('emisor_iban').value = '';
             }
         }
 
-        function mostrarAplicacionFacturas() {
-            document.getElementById('app-content').style.display = 'block';
-            cargarDatosDesdeAlmacenamientoLocal();
-        }
-
+        // LÓGICA DE FORMULARIO DE SERVICIOS
         let contadorLineas = 0;
         function agregarNuevaLineaFormulario(concepto = '', precio = '') {
             contadorLineas++;
@@ -380,11 +425,26 @@
         }
 
         function cargarDatosDesdeAlmacenamientoLocal() {
-            const camposFijos = ['emisor_nombre', 'emisor_nif', 'emisor_email', 'emisor_direccion', 'emisor_iban', 'cliente_nombre', 'cliente_nif', 'cliente_direccion', 'iva', 'irpf'];
+            const camposFijos = ['cliente_nombre', 'cliente_nif', 'cliente_direccion', 'iva', 'irpf'];
             camposFijos.forEach(campo => {
                 const valor = localStorage.getItem('data_' + campo);
                 if (valor && document.getElementById(campo)) document.getElementById(campo).value = valor;
             });
+            
+            // SUGERENCIA INICIAL DEL SIGUIENTE NÚMERO (EDITABLE)
+            const ultimoNumero = localStorage.getItem('data_ultimo_numero');
+            if (ultimoNumero) {
+                const matches = ultimoNumero.match(/(.*?)(\d+)$/);
+                if (matches) {
+                    const textoPrefijo = matches[1];
+                    const numeroString = matches[2];
+                    const nuevoNumeroInt = parseInt(numeroString, 10) + 1;
+                    const nuevoNumeroString = nuevoNumeroInt.toString().padStart(numeroString.length, '0');
+                    document.getElementById('numero').value = textoPrefijo + nuevoNumeroString;
+                } else {
+                    document.getElementById('numero').value = ultimoNumero;
+                }
+            }
             
             const itemsGuardados = localStorage.getItem('data_ultimos_items');
             if (itemsGuardados) {
@@ -436,7 +496,8 @@
                 tablaPdfBody.appendChild(fila);
             });
 
-            const camposAGuardar = { emisor_nombre, emisor_nif, emisor_email, emisor_direccion, emisor_iban, cliente_nombre, cliente_nif, cliente_direccion, iva: p_iva, irpf: p_irpf };
+            localStorage.setItem('data_ultimo_numero', numero);
+            const camposAGuardar = { cliente_nombre, cliente_nif, cliente_direccion, iva: p_iva, irpf: p_irpf };
             Object.keys(camposAGuardar).forEach(key => localStorage.setItem('data_' + key, camposAGuardar[key]));
             localStorage.setItem('data_ultimos_items', JSON.stringify(listaItemsParaGuardar));
 
@@ -478,16 +539,22 @@
             document.getElementById('pdf-tot-final').innerText = total_neto.toFixed(2) + " €";
 
             const elementoPDF = document.getElementById('pdf-template');
+            elementoPDF.style.display = 'block';
 
             const opcionesConfig = {
-                margin:       15, // Margen estructural limpio que respeta html2pdf
+                margin:       10,
                 filename:     `Factura_${numero}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' }, 
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opcionesConfig).from(elementoPDF).save();
+            html2pdf().set(opcionesConfig).from(elementoPDF).save().then(() => {
+                elementoPDF.style.display = 'none';
+            }).catch(err => {
+                console.error(err);
+                elementoPDF.style.display = 'none';
+            });
         }
     </script>
 </body>

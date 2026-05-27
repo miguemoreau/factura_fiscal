@@ -64,16 +64,16 @@
         
         #screen-setup, #screen-login, #app-content { display: none; }
 
-        /* REPARACIÓN DEFINITIVA DEL TEMPLATE DEL PDF */
+        /* REPARACIÓN DEL TEMPLATE DEL PDF (Invisible en Login/Formulario pero perfectamente detectable por html2pdf) */
         #pdf-template { 
             position: absolute;
             top: 0;
             left: 0;
-            width: 190mm; /* Ancho ajustado para compensar el margen interno */
+            width: 190mm; 
             opacity: 0;
             z-index: -1;
             pointer-events: none;
-            display: block !important; /* Mantenemos el bloque renderizado para que html2pdf no falle */
+            display: block !important; 
             color-scheme: light !important; 
             font-family: Arial, sans-serif !important; 
             color: #333333 !important; 
@@ -82,7 +82,7 @@
             box-sizing: border-box;
         }
         
-        /* Forzar texto oscuro ante extensiones de lectura */
+        /* Blindaje estricto de textos oscuros contra extensiones modo noche */
         #pdf-template * {
             color: #333333 !important;
             background-color: transparent !important;
@@ -95,7 +95,7 @@
         .pdf-col-right { text-align: right; }
         .pdf-section-title { font-size: 9pt; color: #64748b !important; -webkit-text-fill-color: #64748b !important; text-transform: uppercase; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; letter-spacing: 0.5px; }
         
-        .pdf-table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         .pdf-table th { 
             background-color: #0f172a !important; 
             color: #ffffff !important; 
@@ -108,11 +108,16 @@
         .pdf-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 10pt; }
         .text-right { text-align: right; }
         
-        /* Bloque inferior fluido para evitar saltos de página erróneos */
+        /* FILA ESPACIADORA: Fuerza la altura A4 de la hoja de forma limpia sin romper el layout */
+        .pdf-espaciador {
+            height: 380px; 
+            border-bottom: none !important;
+        }
+        
         .pdf-footer-container {
-            margin-top: 40px; 
+            margin-top: 20px; 
             width: 100%;
-            page-break-inside: avoid; /* Obliga a mantener los totales y el IBAN juntos */
+            page-break-inside: avoid; /* Asegura que el bloque total e IBAN nunca se separen */
         }
         .pdf-totales { width: 45%; float: right; margin-bottom: 25px; }
         .pdf-totales-row { margin-bottom: 6px; font-size: 10pt; display: flex; justify-content: space-between; }
@@ -269,6 +274,12 @@
                 </tr>
             </thead>
             <tbody id="pdf-tabla-items"></tbody>
+            <tbody>
+                <tr>
+                    <td class="pdf-espaciador"></td>
+                    <td style="border-bottom: none !important;"></td>
+                </tr>
+            </tbody>
         </table>
 
         <div class="pdf-footer-container">
@@ -411,7 +422,7 @@
             tablaPdfBody.innerHTML = ''; 
 
             bloquesLineas.forEach(bloque => {
-                const concepto = block = bloque.querySelector('.input-concepto').value;
+                const concepto = bloque.querySelector('.input-concepto').value;
                 const precio = parseFloat(bloque.querySelector('.input-precio').value) || 0;
                 
                 base_imponible += precio;
@@ -468,9 +479,8 @@
 
             const elementoPDF = document.getElementById('pdf-template');
 
-            // CONFIGURACIÓN ROBUSTA Y DIRECTA
             const opcionesConfig = {
-                margin:       15, // Delegamos el margen A4 a la librería de forma estricta
+                margin:       15, // Margen estructural limpio que respeta html2pdf
                 filename:     `Factura_${numero}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' }, 

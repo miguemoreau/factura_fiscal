@@ -15,6 +15,7 @@
             --accent-color: #0f172a;
             --border-color: #e2e8f0;
             --success-color: #10b981;
+            --danger-color: #ef4444;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -42,17 +43,46 @@
         input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent-color); background: #fff; }
         .row { display: flex; gap: 12px; }
         .row .form-group { flex: 1; }
-        button {
+        
+        /* Estilos para las líneas dinámicas de conceptos */
+        .linea-item {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 12px;
+            position: relative;
+        }
+        .btn-eliminar {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            float: right;
+            margin-bottom: 8px;
+        }
+        
+        button.primary {
             width: 100%; background-color: var(--accent-color); color: white; border: none; padding: 16px; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        button.secondary {
+            width: 100%; background-color: #e2e8f0; color: #334155; border: none; padding: 12px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-bottom: 10px;
         }
         button:active { transform: scale(0.98); }
         .badge-secure { text-align: center; font-size: 0.75rem; color: var(--success-color); margin-top: 15px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 4px; }
         
-        /* PANTALLAS DE CONTROL */
         #screen-setup, #screen-login, #app-content { display: none; }
 
-        /* VISTA PREVIA OCULTA DEL PDF */
-        #pdf-template { display: none; }
+        /* VISTA PREVIA DEL PDF (Solución al error en blanco: se renderiza fuera de la pantalla en lugar de display:none) */
+        #pdf-wrapper {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            width: 210mm; /* Ancho A4 */
+        }
         .pdf-page { font-family: Arial, sans-serif; color: #333; padding: 20mm; background: white; box-sizing: border-box; }
         .pdf-header { margin-bottom: 40px; display: flex; justify-content: space-between; }
         .pdf-title { font-size: 28pt; color: #0f172a; font-weight: bold; margin: 0; letter-spacing: -1px; }
@@ -65,6 +95,7 @@
         .pdf-totales { width: 45%; float: right; margin-top: 20px; }
         .pdf-totales-row { margin-bottom: 8px; font-size: 11pt; display: flex; justify-content: space-between; }
         .pdf-total-final { font-size: 15pt; font-weight: bold; color: #0f172a; border-top: 2px solid #0f172a; padding-top: 8px; }
+        .pdf-iban-box { margin-top: 60px; font-size: 10pt; color: #475569; border-top: 1px dashed #cbd5e1; padding-top: 10px; clear: both; }
     </style>
 </head>
 <body>
@@ -73,12 +104,12 @@
 
         <div id="screen-setup" class="card">
             <h2>Configuración de Seguridad</h2>
-            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">Crea una contraseña maestra. Se encriptará de forma militar directamente en tu teléfono. Nadie en internet podrá verla.</p>
+            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">Crea una contraseña maestra. Se encriptará localmente en tu teléfono.</p>
             <div class="form-group">
                 <label for="setup-password">Crea tu contraseña de acceso:</label>
                 <input type="password" id="setup-password" placeholder="Mínimo 6 caracteres">
             </div>
-            <button onclick="registrarContrasena()">Guardar Contraseña de Forma Segura</button>
+            <button class="primary" onclick="registrarContrasena()">Guardar Contraseña</button>
         </div>
 
         <div id="screen-login" class="card">
@@ -87,8 +118,8 @@
                 <label for="login-password">Introduce tu contraseña maestra:</label>
                 <input type="password" id="login-password" placeholder="Contraseña">
             </div>
-            <button onclick="loginConContrasena()">Verificar e Ingresar</button>
-            <p id="login-error" style="color: #ef4444; font-size: 0.85rem; display: none; margin-top: 10px; font-weight: 500;">❌ Contraseña incorrecta. Inténtalo de nuevo.</p>
+            <button class="primary" onclick="loginConContrasena()">Verificar e Ingresar</button>
+            <p id="login-error" style="color: #ef4444; font-size: 0.85rem; display: none; margin-top: 10px; font-weight: 500;">❌ Contraseña incorrecta.</p>
         </div>
 
         <div id="app-content">
@@ -99,21 +130,25 @@
                     <h2>Mis Datos (Emisor Autónomo)</h2>
                     <div class="form-group">
                         <label for="emisor_nombre">Mi Nombre Completo / Razón Social</label>
-                        <input type="text" id="emisor_nombre" required placeholder="Ej: Juan Pérez García">
+                        <input type="text" id="emisor_nombre" required>
                     </div>
                     <div class="row">
                         <div class="form-group">
                             <label for="emisor_nif">Mi NIF</label>
-                            <input type="text" id="emisor_nif" required placeholder="12345678Z">
+                            <input type="text" id="emisor_nif" required>
                         </div>
                         <div class="form-group">
                             <label for="emisor_email">Mi Email</label>
-                            <input type="email" id="emisor_email" required placeholder="correo@ejemplo.com">
+                            <input type="email" id="emisor_email" required>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="emisor_direccion">Mi Dirección Fiscal</label>
-                        <textarea id="emisor_direccion" rows="2" required placeholder="Calle, Número, C.P., Ciudad"></textarea>
+                        <textarea id="emisor_direccion" rows="2" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="emisor_iban">Mi Cuenta Bancaria (IBAN) para el cobro</label>
+                        <input type="text" id="emisor_iban" required placeholder="ESXX XXXX XXXX XXXX XXXX XXXX">
                     </div>
                 </div>
 
@@ -139,7 +174,7 @@
                     </div>
                     <div class="form-group">
                         <label for="cliente_nif">NIF / CIF Cliente</label>
-                        <input type="text" id="cliente_nif" required placeholder="B12345678">
+                        <input type="text" id="cliente_nif" required>
                     </div>
                     <div class="form-group">
                         <label for="cliente_direccion">Dirección Cliente</label>
@@ -148,46 +183,40 @@
                 </div>
 
                 <div class="card">
-                    <h2>Concepto e Impuestos (España)</h2>
-                    <div class="form-group">
-                        <label for="concepto">Descripción del Servicio prestado</label>
-                        <textarea id="concepto" rows="2" required placeholder="Servicios profesionales de..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="base_imponible">Base Imponible (€)</label>
-                        <input type="number" id="base_imponible" step="0.01" required placeholder="0.00">
-                    </div>
-                    <div class="row">
+                    <h2>Servicios / Ítems Facturados</h2>
+                    <div id="contenedor-lineas">
+                        </div>
+                    <button type="button" class="secondary" onclick="agregarNuevaLineaFormulario()">+ Añadir Servicio / Ítem</button>
+                    
+                    <div class="row" style="margin-top: 10px;">
                         <div class="form-group">
                             <label for="iva">IVA (%)</label>
                             <select id="iva">
-                                <option value="21" selected>21% (General)</option>
-                                <option value="10">10% (Reducido)</option>
-                                <option value="4">4% (Superreducido)</option>
-                                <option value="0">0% (Exento)</option>
+                                <option value="21" selected>21%</option>
+                                <option value="10">10%</option>
+                                <option value="4">4%</option>
+                                <option value="0">0%</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="irpf">IRPF (%) (Retención)</label>
                             <select id="irpf">
-                                <option value="15" selected>15% (Autónomos)</option>
-                                <option value="7">7% (Nuevos Autónomos)</option>
-                                <option value="0">0% (No aplica)</option>
+                                <option value="15" selected>15%</option>
+                                <option value="7">7%</option>
+                                <option value="0">0%</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
-                <button type="submit">Generar Factura A4 (PDF)</button>
-                <div class="badge-secure">
-                    🔒 Cifrado Criptográfico SHA-256 Local Activo
-                </div>
+                <button type="submit" class="primary">Generar Factura A4 (PDF)</button>
+                <div class="badge-secure">🔒 Cifrado Criptográfico SHA-256 Activo</div>
             </form>
         </div>
     </div>
 
-    <div id="pdf-template">
-        <div class="pdf-page">
+    <div id="pdf-wrapper">
+        <div id="pdf-template" class="pdf-page">
             <div class="pdf-header">
                 <div>
                     <p class="pdf-title">FACTURA</p>
@@ -222,12 +251,8 @@
                         <th class="text-right" style="width: 25%;">Total</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td id="pdf-concept-cell" style="white-space: pre-line;"></td>
-                        <td id="pdf-base-cell" class="text-right"></td>
-                    </tr>
-                </tbody>
+                <tbody id="pdf-tabla-items">
+                    </tbody>
             </table>
 
             <div class="pdf-totales">
@@ -248,11 +273,17 @@
                     <span id="pdf-tot-final"></span>
                 </div>
             </div>
+
+            <div class="pdf-iban-box">
+                <strong>Método de pago:</strong> Transferencia bancaria al número de cuenta:<br>
+                <span id="pdf-emisor-iban" style="font-family: monospace; font-size: 11pt; font-weight: bold; color: #0f172a;"></span>
+            </div>
         </div>
     </div>
 
     <script>
-        // Función nativa para transformar cualquier texto en un Hash SHA-256 irrompible
+        const CONFIG_SECURE = { tokenSecreto: "2024FACTURA" };
+
         async function calcularHashSHA256(texto) {
             const msgBuffer = new TextEncoder().encode(texto);                    
             const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -260,17 +291,12 @@
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        // FLUJO DE CONTROL DE PANTALLAS AL ARRANCAR
         window.addEventListener('DOMContentLoaded', () => {
             const hashGuardado = localStorage.getItem('secure_password_hash');
-            
             if (!hashGuardado) {
-                // Caso 1: Es la primera vez que entra en su vida. Obligamos a configurar contraseña.
                 document.getElementById('screen-setup').style.display = 'block';
             } else {
-                // Caso 2: Ya está configurado. Comprobamos si tiene la sesión del día activa
-                const sesionActiva = sessionStorage.getItem('session_authenticated');
-                if (sesionActiva === 'true') {
+                if (sessionStorage.getItem('session_authenticated') === 'true') {
                     mostrarAplicacionFacturas();
                 } else {
                     document.getElementById('screen-login').style.display = 'block';
@@ -278,28 +304,17 @@
             }
         });
 
-        // REGISTRO INICIAL DE LA CONTRASEÑA
         async function registrarContrasena() {
             const pass = document.getElementById('setup-password').value;
-            if (pass.length < 6) {
-                alert("Por seguridad, la contraseña debe tener al menos 6 caracteres.");
-                return;
-            }
-            const hash = await calcularHashSHA256(pass);
-            localStorage.setItem('secure_password_hash', hash);
+            if (pass.length < 6) { alert("Mínimo 6 caracteres."); return; }
+            localStorage.setItem('secure_password_hash', await calcularHashSHA256(pass));
             sessionStorage.setItem('session_authenticated', 'true');
-            
             document.getElementById('screen-setup').style.display = 'none';
             mostrarAplicacionFacturas();
         }
 
-        // LOGIN VERIFICADOR DE HASH
         async function loginConContrasena() {
-            const pass = document.getElementById('login-password').value;
-            const hashIntroducido = await calcularHashSHA256(pass);
-            const hashCorrecto = localStorage.getItem('secure_password_hash');
-
-            if (hashIntroducido === hashCorrecto) {
+            if (await calcularHashSHA256(document.getElementById('login-password').value) === localStorage.getItem('secure_password_hash')) {
                 sessionStorage.setItem('session_authenticated', 'true');
                 document.getElementById('screen-login').style.display = 'none';
                 mostrarAplicacionFacturas();
@@ -313,70 +328,122 @@
             cargarDatosDesdeAlmacenamientoLocal();
         }
 
+        // CONTROL DE LÍNEAS DINÁMICAS EN EL FORMULARIO
+        let contadorLineas = 0;
+        function agregarNuevaLineaFormulario(concepto = '', precio = '') {
+            contadorLineas++;
+            const contenedor = document.getElementById('contenedor-lineas');
+            const div = document.createElement('div');
+            div.className = 'linea-item';
+            div.id = `linea-${contadorLineas}`;
+            div.innerHTML = `
+                <button type="button" class="btn-eliminar" onclick="eliminarLineaFormulario(${contadorLineas})">Eliminar</button>
+                <div class="form-group">
+                    <label>Concepto / Servicio</label>
+                    <input type="text" class="input-concepto" required value="${concepto}" placeholder="Ej: Desarrollo del módulo X">
+                </div>
+                <div class="form-group">
+                    <label>Importe (€)</label>
+                    <input type="number" class="input-precio" step="0.01" required value="${precio}" placeholder="0.00">
+                </div>
+            `;
+            contenedor.appendChild(div);
+        }
+
+        function eliminarLineaFormulario(id) {
+            const linea = document.getElementById(`linea-${id}`);
+            if (linea) linea.remove();
+        }
+
         // PERSISTENCIA LOCAL INTELIGENTE
         function cargarDatosDesdeAlmacenamientoLocal() {
-            // Campos que el autónomo no quiere reescribir nunca (Sus propios datos y el último cliente)
-            const campos = [
-                'emisor_nombre', 'emisor_nif', 'emisor_email', 'emisor_direccion',
-                'cliente_nombre', 'cliente_nif', 'cliente_direccion', 'concepto', 'iva', 'irpf'
-            ];
-            campos.forEach(campo => {
+            const camposFijos = ['emisor_nombre', 'emisor_nif', 'emisor_email', 'emisor_direccion', 'emisor_iban', 'cliente_nombre', 'cliente_nif', 'cliente_direccion', 'iva', 'irpf'];
+            camposFijos.forEach(campo => {
                 const valor = localStorage.getItem('data_' + campo);
                 if (valor) document.getElementById(campo).value = valor;
             });
-            // Autocompletar la fecha de hoy en el móvil
+            
+            // Cargar últimos ítems guardados (si los hay)
+            const itemsGuardados = localStorage.getItem('data_ultimos_items');
+            if (itemsGuardados) {
+                const items = JSON.parse(itemsGuardados);
+                items.forEach(item => agregarNuevaLineaFormulario(item.concepto, item.precio));
+            } else {
+                agregarNuevaLineaFormulario(); // Si está vacío, añade una línea en blanco por defecto
+            }
             document.getElementById('fecha').value = new Date().toISOString().substring(0, 10);
         }
 
-        // MOTOR DE CÁLCULO FISCAL Y COMPILACIÓN DEL PDF profesional
+        // GENERACIÓN REPARADA DEL PDF
         function generarFacturaPDF(event) {
             event.preventDefault();
 
-            // Extracción de variables del formulario móvil
+            // 1. Captura de datos del Emisor y Cliente
             const emisor_nombre = document.getElementById('emisor_nombre').value;
             const emisor_nif = document.getElementById('emisor_nif').value;
             const emisor_email = document.getElementById('emisor_email').value;
             const emisor_direccion = document.getElementById('emisor_direccion').value;
+            const emisor_iban = document.getElementById('emisor_iban').value;
 
             const numero = document.getElementById('numero').value;
             const fechaRaw = document.getElementById('fecha').value;
             const cliente_nombre = document.getElementById('cliente_nombre').value;
             const cliente_nif = document.getElementById('cliente_nif').value;
             const cliente_direccion = document.getElementById('cliente_direccion').value;
-            const concepto = document.getElementById('concepto').value;
-            const base_imponible = parseFloat(document.getElementById('base_imponible').value);
             const p_iva = parseInt(document.getElementById('iva').value);
             const p_irpf = parseInt(document.getElementById('irpf').value);
 
-            // Guardar absolutamente todo de forma persistente y privada en el teléfono
-            const camposAGuardar = { emisor_nombre, emisor_nif, emisor_email, emisor_direccion, cliente_nombre, cliente_nif, cliente_direccion, concepto, iva: p_iva, irpf: p_irpf };
-            Object.keys(camposAGuardar).forEach(key => {
-                localStorage.setItem('data_' + key, camposAGuardar[key]);
+            // 2. Procesamiento de los ítems dinámicos y cálculo de la Base Imponible
+            const bloquesLineas = document.querySelectorAll('.linea-item');
+            if (bloquesLineas.length === 0) { alert("Debes añadir al menos un servicio."); return; }
+
+            let base_imponible = 0;
+            const listaItemsParaGuardar = [];
+            const tablaPdfBody = document.getElementById('pdf-tabla-items');
+            tablaPdfBody.innerHTML = ''; // Limpiar tabla del PDF
+
+            bloquesLineas.forEach(bloque => {
+                const concepto = bloque.querySelector('.input-concepto').value;
+                const precio = parseFloat(bloque.querySelector('.input-precio').value) || 0;
+                
+                base_imponible += precio;
+                listaItemsParaGuardar.push({ concepto, precio });
+
+                // Inyectar fila en la tabla del PDF
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td style="white-space: pre-line;">${concepto}</td>
+                    <td class="text-right">${precio.toFixed(2)} €</td>
+                `;
+                tablaPdfBody.appendChild(fila);
             });
 
-            // Formatear Fecha a Estándar Español (DD/MM/AAAA)
-            const [year, month, day] = fechaRaw.split('-');
-            const fechaFormateada = `${day}/${month}/${year}`;
+            // 3. Guardar todo de forma persistente
+            const camposAGuardar = { emisor_nombre, emisor_nif, emisor_email, emisor_direccion, emisor_iban, cliente_nombre, cliente_nif, cliente_direccion, iva: p_iva, irpf: p_irpf };
+            Object.keys(camposAGuardar).forEach(key => localStorage.setItem('data_' + key, camposAGuardar[key]));
+            localStorage.setItem('data_ultimos_items', JSON.stringify(listaItemsParaGuardar));
 
-            // Algoritmo Fiscal de la Agencia Tributaria (España)
+            // 4. Cálculos Fiscales (España)
             const cuota_iva = base_imponible * (p_iva / 100);
             const cuota_irpf = base_imponible * (p_irpf / 100);
             const total_neto = base_imponible + cuota_iva - cuota_irpf;
 
-            // Inyectar datos en la plantilla limpia del documento A4
+            // Formatear Fecha (DD/MM/AAAA)
+            const [year, month, day] = fechaRaw.split('-');
+            const fechaFormateada = `${day}/${month}/${year}`;
+
+            // 5. Inyección de textos en el PDF
             document.getElementById('pdf-emisor-nombre').innerText = emisor_nombre;
             document.getElementById('pdf-emisor-nif').innerText = emisor_nif;
             document.getElementById('pdf-emisor-dir').innerText = emisor_direccion;
             document.getElementById('pdf-emisor-email').innerText = emisor_email;
+            document.getElementById('pdf-emisor-iban').innerText = emisor_iban; // Inyectar IBAN
 
             document.getElementById('pdf-num').innerText = numero;
             document.getElementById('pdf-fecha').innerText = fechaFormateada;
             document.getElementById('pdf-cli-nombre').innerText = cliente_nombre;
             document.getElementById('pdf-cli-nif').innerText = cliente_nif;
             document.getElementById('pdf-cli-dir').innerText = cliente_direccion;
-            
-            document.getElementById('pdf-concept-cell').innerText = concepto;
-            document.getElementById('pdf-base-cell').innerText = base_imponible.toFixed(2) + " €";
             
             document.getElementById('pdf-tot-base').innerText = base_imponible.toFixed(2) + " €";
             document.getElementById('pdf-rate-iva').innerText = p_iva;
@@ -389,24 +456,22 @@
             } else {
                 document.getElementById('pdf-irpf-row').style.display = 'none';
             }
-
             document.getElementById('pdf-tot-final').innerText = total_neto.toFixed(2) + " €";
 
-            // Disparar la renderización del PDF nativo
+            // 6. Lanzar conversión a PDF (Solución definitiva al blanco)
+            // Usamos el contenedor completo que ubica el PDF fuera de la pantalla en lugar de display:none
             const elementoPDF = document.getElementById('pdf-template');
-            elementoPDF.style.display = 'block';
 
             const opcionesConfig = {
                 margin:       0,
                 filename:     `Factura_${numero}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opcionesConfig).from(elementoPDF).save().then(() => {
-                elementoPDF.style.display = 'none'; // Ocultar plantilla tras la compilación exitosa
-            });
+            // Ejecutar la descarga
+            html2pdf().set(opcionesConfig).from(elementoPDF).save();
         }
     </script>
 </body>
